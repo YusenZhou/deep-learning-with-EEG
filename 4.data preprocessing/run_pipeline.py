@@ -106,9 +106,9 @@ def load_subject_epochs(subject_id, data_dir, session='T'):
     baseline = epochs_data[:, :, :125].mean(axis=2, keepdims=True)
     epochs_data = epochs_data - baseline
     
-    print(f"  {subject_id}{session}: {epochs_data.shape[0]} epochs, "
-          f"shape {epochs_data.shape}, "
-          f"class dist: {np.bincount(labels)}")
+    # print(f"  {subject_id}{session}: {epochs_data.shape[0]} epochs, "
+    #       f"shape {epochs_data.shape}, "
+    #       f"class dist: {np.bincount(labels)}")
     
     return epochs_data, labels
 
