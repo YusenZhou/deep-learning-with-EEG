@@ -1,6 +1,4 @@
 #project in progress
-signals and eeg data exploring
-data preprocessing
 
 #data
 mne_data/
@@ -19,7 +17,6 @@ __pycache__/
 
 #notebooks
 *.ipynb_checkpoints/
-eeg_preprocessing_pipeline.ipynb
 
 #others
 .DS_Store
