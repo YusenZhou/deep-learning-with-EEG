@@ -1,8 +1,10 @@
-from src.config import run_pipeline,DATA_DIR
+import sys
+sys.path.insert(0, '../4.data preprocessing')
+from run_pipeline import run_pipeline
 import torch
 from torch.utils.data import Dataset,DataLoader
 
-data = run_pipeline('A01', DATA_DIR)
+data = run_pipeline(1)
 X_train = data['X_train']
 X_test  = data['X_test']
 y_train = data['y_train']

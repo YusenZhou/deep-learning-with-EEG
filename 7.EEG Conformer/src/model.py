@@ -21,8 +21,8 @@ class PatchEmbedding(nn.Module):
         x: (B, 1, C, T)
         returns: (B, T', d_model) where d_model = F1 * D
     """
-    def __init__(self, n_channels=22, F1=40, D=1, kern_len=25,
-                 pool_size=75, pool_stride=15, dropout=0.5):
+    def __init__(self, n_channels=128, F1=40, D=1, kern_len=50,
+                 pool_size=150, pool_stride=30, dropout=0.5):
         super().__init__()
         self.d_model = F1 * D
         
@@ -143,9 +143,9 @@ class EEGConformer(nn.Module):
         x: (B, 1, C, T)
         returns: logits (B, n_classes)
     """
-    def __init__(self, n_channels=22, n_timepoints=250, n_classes=4,
-                 F1=40, D=1, kern_len=25,
-                 pool_size=75, pool_stride=15,
+    def __init__(self, n_channels=128, n_timepoints=500, n_classes=4,
+                 F1=40, D=1, kern_len=50,
+                 pool_size=150, pool_stride=30,
                  n_heads=10, n_layers=6, ff_ratio=3, dropout=0.5):
         super().__init__()
         

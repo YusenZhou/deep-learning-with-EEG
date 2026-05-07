@@ -2,7 +2,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 from src.model import EEGNet
-from src.data import train_loader,test_loader,run_pipeline,DATA_DIR,EEGDataset
+from src.data import train_loader,test_loader,run_pipeline,EEGDataset
 from src.train import train_one_epoch,evaluate
 from src.config import DEVICE,N_EPOCHS,LR,BATCH_SIZE
 
@@ -59,13 +59,13 @@ def train_on_all_data():
 
     if os.path.exists(METRICS_PATH_ALL):
         all_results = torch.load(METRICS_PATH_ALL,weights_only=False)
-        print("Loaded cached 9-subject results.")
+        print("Loaded cached 14-subject results.")
         for subj in sorted(all_results.keys()):
             r = all_results[subj]
             print(f"  {subj}: acc={r['accuracy']:.4f}, kappa={r['kappa']:.4f}")
     else:
         all_results = {}
-        subjects = [f'A0{i}' for i in range(1, 10)]
+        subjects = list(range(1, 15))
         
         for subj in subjects:
             print(f"\n{'='*50}")
@@ -73,7 +73,7 @@ def train_on_all_data():
             print(f"{'='*50}")
             
             # Load data
-            data = run_pipeline(subj, DATA_DIR)
+            data = run_pipeline(subj)
             X_tr = data['X_train']
             X_te = data['X_test']
             y_tr = data['y_train']

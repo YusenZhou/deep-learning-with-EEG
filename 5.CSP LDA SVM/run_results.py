@@ -7,7 +7,6 @@ from sklearn.base import clone
 import sys
 sys.path.insert(0, '../4.data preprocessing')
 from run_pipeline import run_pipeline
-DATA_DIR = '../mne_data/bci_iv_2a'  # adjust to your local path
 
 np.random.seed(42)
 
@@ -19,11 +18,11 @@ methods = {
     'CSP+rbfSVM':     SVC(kernel='rbf',    C=1.0, gamma='scale'),
 }
 
-subjects = [f'A0{i}' for i in range(1, 10)]
+subjects = list(range(1, 15))
 results = {m: {} for m in methods}
 
 for subj in subjects:
-    data = run_pipeline(subj, DATA_DIR)
+    data = run_pipeline(subj)
 
     Xtr = data['X_train']
     Xte  = data['X_test']
@@ -32,7 +31,7 @@ for subj in subjects:
     for name, clf in methods.items():
         res = run_csp_classifier(Xtr, Xte, ytr, yte, clone(clf))
         results[name][subj] = res
-    print(f"{subj}: " + "  ".join(
+    print(f"Subject {subj:>2d}: " + "  ".join(
         f"{name} κ={results[name][subj]['kappa']:.3f}" for name in methods))
     
 # Summary table
@@ -46,6 +45,7 @@ for name in methods:
     
 # Per-subject kappa bar chart
 fig, ax = plt.subplots(figsize=(11, 4.5))
+subject_labels = [f'S{s:02d}' for s in subjects]
 x = np.arange(len(subjects))
 width = 0.27
 for i, name in enumerate(methods):
@@ -53,8 +53,8 @@ for i, name in enumerate(methods):
     ax.bar(x + (i - 1) * width, kapps, width, label=name)
 ax.axhline(0, color='gray', linewidth=0.5)
 ax.axhline(0.5, color='green', linestyle='--', alpha=0.5, label='kappa=0.5 (strong)')
-ax.set_xticks(x); ax.set_xticklabels(subjects)
-ax.set_ylabel("Cohen's kappa"); ax.set_title('Dataset 2a — per-subject test kappa')
+ax.set_xticks(x); ax.set_xticklabels(subject_labels)
+ax.set_ylabel("Cohen's kappa"); ax.set_title('HGD — per-subject test kappa')
 ax.legend()
 plt.tight_layout()
 plt.show()

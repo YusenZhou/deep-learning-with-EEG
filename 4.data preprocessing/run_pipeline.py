@@ -1,6 +1,6 @@
 import numpy as np
 import mne
-from scipy.io import loadmat
+from braindecode.datasets import HGD
 from sklearn.model_selection import StratifiedShuffleSplit
 import matplotlib.pyplot as plt
 import warnings
@@ -8,108 +8,81 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 mne.set_log_level('WARNING')
 
 
-DATA_DIR = '../mne_data/bci_iv_2a/'
-
 # Dataset constants
-FS = 250          # Sampling rate (Hz)
-N_CHANNELS = 22   # EEG channels (after dropping EOG)
-N_CLASSES = 4      # left hand, right hand, feet, tongue
-EVENT_IDS = {'left_hand': 769, 'right_hand': 770, 'feet': 771, 'tongue': 772}
+FS = 500           # Sampling rate (Hz)
+N_CHANNELS = 128   # EEG channels
+N_CLASSES = 4      # left hand, right hand, feet, rest
+CLASS_NAMES = ['left_hand', 'right_hand', 'feet', 'rest']
 
-# Channel names for the 22 EEG channels in Dataset 2a
-CH_NAMES_22 = [
-    'Fz', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4',
-    'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6',
-    'CP3', 'CP1', 'CPz', 'CP2', 'CP4',
-    'P1', 'Pz', 'P2', 'POz'
-]
-
-def load_subject_epochs(subject_id, data_dir, session='T'):
+def load_subject_epochs(subject_id):
     """
-    Load and epoch one subject's data from BCI Competition IV Dataset 2a.
+    Load and epoch one subject's data from the High-Gamma Dataset (HGD)
+    via braindecode/MOABB.
     
     Args:
-        subject_id: str, e.g. 'A01'
-        data_dir:   str, path to directory containing .gdf and .mat files
-        session:    str, 'T' for training, 'E' for evaluation
+        subject_id: int, 1–14
     
     Returns:
-        epochs_data: np.ndarray, shape (n_trials, 22, n_times)
+        epochs_data: np.ndarray, shape (n_trials, 128, n_times)
         labels:      np.ndarray, shape (n_trials,), values in {0, 1, 2, 3}
-                     0=left hand, 1=right hand, 2=feet, 3=tongue
+                     0=left hand, 1=right hand, 2=feet, 3=rest
     """
-    gdf_path = f"{data_dir}/{subject_id}{session}.gdf"
-    raw = mne.io.read_raw_gdf(gdf_path, preload=True)
-    
-    # Rename channels to standard 10-20 names
-    eeg_ch_names = raw.ch_names[:22]
-    rename_map = {old: new for old, new in zip(eeg_ch_names, CH_NAMES_22)}
-    raw.rename_channels(rename_map)
-    
-    # Pick only EEG channels
-    raw.pick_channels(CH_NAMES_22)
-    
-    # Set montage for topographic plotting
-    montage = mne.channels.make_standard_montage('standard_1020')
-    raw.set_montage(montage)
-    
-    # Band-pass filter: 4-38 Hz
-    raw.filter(4.0, 38.0, fir_design='firwin')
-    
-    # Average reference
-    raw.set_eeg_reference('average', projection=False)
-    
-    # Extract events
-    events, event_id_full = mne.events_from_annotations(raw)
-    
-    # Map to our event IDs — GDF annotations vary by MNE version,
-    # so we find the correct annotation keys for codes 769-772
-    target_events = {}
-    for key, val in event_id_full.items():
-        # Try to extract the numeric code from the annotation string
-        try:
-            code = int(key)
-        except ValueError:
-            # Some MNE versions use strings like '769', others differ
+    dataset = HGD(subject_ids=[subject_id])
+
+    all_epochs_data = []
+    all_labels = []
+
+    for ds in dataset.datasets:
+        raw = ds.raw.copy()
+
+        raw.pick_types(eeg=True)
+        raw.filter(4.0, 38.0, fir_design='firwin')
+        raw.set_eeg_reference('average', projection=False)
+
+        events, event_id_full = mne.events_from_annotations(raw)
+
+        target_events = {}
+        label_map = {}
+        for key, val in event_id_full.items():
+            key_lower = key.lower().replace(' ', '_')
+            if 'left' in key_lower and 'hand' in key_lower:
+                target_events[key] = val
+                label_map[val] = 0
+            elif 'right' in key_lower and 'hand' in key_lower:
+                target_events[key] = val
+                label_map[val] = 1
+            elif 'feet' in key_lower or 'foot' in key_lower:
+                target_events[key] = val
+                label_map[val] = 2
+            elif 'rest' in key_lower:
+                target_events[key] = val
+                label_map[val] = 3
+
+        if not target_events:
             continue
-        if code in [769, 770, 771, 772]:
-            target_events[key] = val
-    
-    # Create epochs: 0.5s to 2.5s relative to cue onset
-    epochs = mne.Epochs(
-        raw, events, event_id=target_events,
-        tmin=0.5, tmax=2.5,
-        baseline=None,  # We'll do baseline correction manually
-        preload=True,
-        proj=False
-    )
-    
-    epochs_data = epochs.get_data()  # (n_trials, 22, n_times)
-    
-    # Get labels
-    if session == 'T':
-        # Training file: labels from events
+
+        epochs = mne.Epochs(
+            raw, events, event_id=target_events,
+            tmin=0.5, tmax=2.5,
+            baseline=None,
+            preload=True,
+            proj=False
+        )
+
+        epochs_data = epochs.get_data()
         event_codes = epochs.events[:, 2]
-        # Map MNE event IDs back to original codes
-        inv_map = {v: int(k) for k, v in target_events.items()}
-        original_codes = np.array([inv_map[c] for c in event_codes])
-        labels = original_codes - 769  # 769->0, 770->1, 771->2, 772->3
-    else:
-        # Evaluation file: labels from .mat file
-        mat_path = f"{data_dir}/{subject_id}E.mat"
-        mat = loadmat(mat_path)
-        labels = mat['classlabel'].flatten() - 1  # 1-indexed to 0-indexed
-        # Trim to match number of valid epochs
-        labels = labels[:len(epochs_data)]
-    
-    # Baseline correction: subtract mean of first 125 samples (0.5s)
-    baseline = epochs_data[:, :, :125].mean(axis=2, keepdims=True)
+        labels = np.array([label_map[c] for c in event_codes])
+
+        all_epochs_data.append(epochs_data)
+        all_labels.append(labels)
+
+    epochs_data = np.concatenate(all_epochs_data, axis=0)
+    labels = np.concatenate(all_labels, axis=0)
+
+    # Baseline correction: subtract mean of first 250 samples (0.5s at 500 Hz)
+    baseline = epochs_data[:, :, :250].mean(axis=2, keepdims=True)
     epochs_data = epochs_data - baseline
-    
-    # print(f"  {subject_id}{session}: {epochs_data.shape[0]} epochs, "
-    #       f"shape {epochs_data.shape}, "
-    #       f"class dist: {np.bincount(labels)}")
-    
+
     return epochs_data, labels
 
 def detect_artifacts(epochs_data, threshold_uv=100.0):
@@ -182,7 +155,7 @@ def split_epochs(epochs_data, labels, test_size=0.2, random_state=42):
     return X_train, X_test, y_train, y_test
 
 
-def sliding_window(X, y, window_size=250, step_size=125):
+def sliding_window(X, y, window_size=500, step_size=250):
     """
     Extract overlapping sliding windows from epochs.
     
@@ -243,15 +216,13 @@ def normalize(X, mu, sigma):
     X = (X-mu)/sigma
     return X
 
-def run_pipeline(subject_id, data_dir, session='T', artifact_threshold=100.0,
-                 test_size=0.2, window_size=250, step_size=125, random_state=42):
+def run_pipeline(subject_id, artifact_threshold=100.0,
+                 test_size=0.2, window_size=500, step_size=250, random_state=42):
     """
     Complete preprocessing pipeline: load → reject → split → window → normalize.
     
     Args:
-        subject_id:          str, e.g. 'A01'
-        data_dir:            str, path to data directory
-        session:             str, 'T' or 'E'
+        subject_id:          int, 1–14 (HGD subject)
         artifact_threshold:  float, PTP threshold in µV
         test_size:           float, fraction for test set
         window_size:         int, samples per window
@@ -263,7 +234,7 @@ def run_pipeline(subject_id, data_dir, session='T', artifact_threshold=100.0,
              'n_rejected', 'mu', 'sigma'
     """
     # YOUR CODE HERE
-    data, labels = load_subject_epochs(subject_id, data_dir, session)
+    data, labels = load_subject_epochs(subject_id)
     clean_data,clean_labels,n_rejected = reject_artifacts(data,labels,threshold_uv=artifact_threshold)
     X_train, X_test, y_train, y_test = split_epochs(clean_data,clean_labels,test_size=test_size,random_state=random_state)
     train_windows, train_labels = sliding_window(X_train,y_train,window_size=window_size,step_size=step_size)

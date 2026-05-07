@@ -89,7 +89,7 @@ def ablation_kernel_length():
         ablation_kern_results = torch.load(ABLATION_KERN_PATH,weights_only=False)
         print("Loaded cached kernel ablation results.")
     else:
-        kern_values = [32, 64, 125]
+        kern_values = [64, 128, 250]
         ablation_kern_results = {}
         
         for kern_val in kern_values:

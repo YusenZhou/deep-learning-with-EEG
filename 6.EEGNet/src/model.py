@@ -27,8 +27,8 @@ class EEGNet(nn.Module):
         x: (B, 1, C, T)
         returns: (B, n_classes) — logits
     """
-    def __init__(self, n_channels=22, n_timepoints=250, n_classes=4,
-                 F1=8, D=2, F2=None, kern_len=125, sep_kern=16,
+    def __init__(self, n_channels=128, n_timepoints=500, n_classes=4,
+                 F1=8, D=2, F2=None, kern_len=250, sep_kern=16,
                  pool1=4, pool2=8, dropout=0.5):
         super().__init__()
         if F2 is None:
