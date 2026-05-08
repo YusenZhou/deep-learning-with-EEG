@@ -39,8 +39,6 @@ class PatchEmbedding(nn.Module):
             nn.Dropout(dropout),
         )
         self.pool = nn.AvgPool1d(pool_size,stride=pool_stride)
-
-        self.pos_embed = nn.Parameter(torch.zeros(1, 64, self.d_model))
     
     def forward(self, x):
         """
@@ -60,8 +58,7 @@ class PatchEmbedding(nn.Module):
         x = x.squeeze(2)
         x = self.pool(x) 
         x = x.transpose(1,2)
-        seq_len = x.size(1)
-        return x + self.pos_embed[:, :seq_len, :]
+        return x
     
 class TransformerBlock(nn.Module):
     """
