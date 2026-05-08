@@ -76,3 +76,19 @@ def plot_bar_chart():
     plt.tight_layout()
     plt.show()
 
+def show_summary():
+    METRICS_PATH_ALL = 'metrics/conformer_all_subjects.pt'
+    all_results = torch.load(METRICS_PATH_ALL, weights_only=False)
+    accs   = [all_results[s]['accuracy'] for s in sorted(all_results.keys())]
+    kappas = [all_results[s]['kappa']    for s in sorted(all_results.keys())]
+
+    print(f"{'Subject':<10} {'Accuracy':>10} {'Kappa':>10}")
+    print('-' * 32)
+    for subj in sorted(all_results.keys()):
+        r = all_results[subj]
+        print(f"{subj:<10} {r['accuracy']:>10.4f} {r['kappa']:>10.4f}")
+    print('-' * 32)
+    print(f"{'Mean':<10} {np.mean(accs):>10.4f} {np.mean(kappas):>10.4f}")
+    print(f"{'Std':<10} {np.std(accs):>10.4f} {np.std(kappas):>10.4f}")
+    print(f"\nAccuracy : {np.mean(accs):.3f} ± {np.std(accs):.3f}")
+    print(f"Kappa    : {np.mean(kappas):.3f} ± {np.std(kappas):.3f}")

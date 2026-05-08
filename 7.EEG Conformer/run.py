@@ -1,6 +1,6 @@
 import sys
 from src.train import train_on_A1,train_all_subjects
-from src.plot import plot_results_A1,plot_A1_confusion_matrix,plot_bar_chart
+from src.plot import plot_results_A1,plot_A1_confusion_matrix,plot_bar_chart,show_summary
 from src.ablation import ablation_heads,ablation_kern_len,ablation_layers
 
 functions = {
@@ -9,6 +9,7 @@ functions = {
     'plot_results_A1': plot_results_A1,
     'plot_A1_confusion_matrix': plot_A1_confusion_matrix,
     'plot_bar_chart': plot_bar_chart,
+    'show_summary': show_summary,
     'ablation_heads': ablation_heads,
     'ablation_kern_len': ablation_kern_len,
     'ablation_layers': ablation_layers,
